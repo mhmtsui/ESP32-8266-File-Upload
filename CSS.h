@@ -1,4 +1,9 @@
-void append_page_header() {
+#ifndef _CSS_H
+#define _CSS_H
+
+#define ServerVersion "1.0"
+
+void append_page_header(String& webpage) {
   webpage  = F("<!DOCTYPE html><html>");
   webpage += F("<head>");
   webpage += F("<title>File Server</title>"); // NOTE: 1em = 16px
@@ -33,7 +38,7 @@ void append_page_header() {
   webpage += F("</style></head><body><h1>File Server "); webpage += String(ServerVersion) + "</h1>";
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-void append_page_footer(){ // Saves repeating many lines of code for HTML page footers
+void append_page_footer(String& webpage){ // Saves repeating many lines of code for HTML page footers
   webpage += F("<ul>");
   webpage += F("<li><a href='/'>Home</a></li>"); // Lower Menu bar command entries
   webpage += F("<li><a href='/download'>Download</a></li>"); 
@@ -44,3 +49,5 @@ void append_page_footer(){ // Saves repeating many lines of code for HTML page f
   webpage += String(char(byte(0x64/2)))+String(char(byte(0x60>>1)))+String(char(byte(0x62>>1)))+String(char(0x70>>1))+"</footer>";
   webpage += F("</body></html>");
 }
+
+#endif
