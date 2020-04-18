@@ -8,9 +8,10 @@ extern ESP8266WebServer server;
 
 void HomePage(void);
 void File_Download(void);
-void SD_file_download(String filename);
+void FS_file_download(String filename);
 void File_Upload(void);
 void handleFileUpload(void);
+void SendResponseOK(void);
 
 void SendHTML_Header();
 void SendHTML_Content();
@@ -20,5 +21,6 @@ void ReportSDNotPresent();
 void ReportFileNotPresent(String target);
 void ReportCouldNotCreateFile(String target);
 String file_size(int bytes);
+String getContentType(String filename);
 
 #endif

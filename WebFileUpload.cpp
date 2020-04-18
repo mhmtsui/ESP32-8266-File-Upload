@@ -20,6 +20,8 @@
  See more at http://www.dsbird.org.uk
  *
 */
+#include <Arduino.h>
+#include <Streaming.h>
 #include "../Ethernet/eethernet.h"
 #include "../ESP8266WebServer/src/ESP8266WebServer.h"
 #include "../SPIFFS/src/FS.h"
@@ -39,74 +41,90 @@ void HomePage(void){
   SendHTML_Stop(); // Stop is needed because no content length was sent
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// void File_Download(void){ // This gets called twice, the first pass selects the input, the second pass then processes the command line arguments
-//   if (server.args() > 0 ) { // Arguments were received
-//     if (server.hasArg("download")) SD_file_download(server.arg(0));
-//   }
-//   else SelectInput(server, "Enter filename to download","download","download");
-// }
-// //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// void SD_file_download(String filename){
-//   if (SD_present) { 
-//     File download = SD.open("/"+filename);
-//     if (download) {
-//       server.sendHeader("Content-Type", "text/text");
-//       server.sendHeader("Content-Disposition", "attachment; filename="+filename);
-//       server.sendHeader("Connection", "close");
-//       server.streamFile(download, "application/octet-stream");
-//       download.close();
-//     } else ReportFileNotPresent("download"); 
-//   } else ReportSDNotPresent(server);
-// }
-// //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// void File_Upload(void){
-//   append_page_header(webpage);
-//   webpage += F("<h3>Select File to Upload</h3>"); 
-//   webpage += F("<FORM action='/fupload' method='post' enctype='multipart/form-data'>");
-//   webpage += F("<input class='buttons' style='width:40%' type='file' name='fupload' id = 'fupload' value=''><br>");
-//   webpage += F("<br><button class='buttons' style='width:10%' type='submit'>Upload File</button><br>");
-//   webpage += F("<a href='/'>[Back]</a><br><br>");
-//   append_page_footer(webpage);
-//   server.send(200, "text/html",webpage);
-// }
-// //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// File UploadFile; 
-// void handleFileUpload(void){ // upload a new file to the Filing system
-//   HTTPUpload& uploadfile = server.upload(); // See https://github.com/esp8266/Arduino/tree/master/libraries/ESP8266WebServer/srcv
-//                                             // For further information on 'status' structure, there are other reasons such as a failed transfer that could be used
-//   if(uploadfile.status == UPLOAD_FILE_START)
-//   {
-//     String filename = uploadfile.filename;
-//     if(!filename.startsWith("/")) filename = "/"+filename;
-//     Serial.print("Upload File Name: "); Serial.println(filename);
-//     SD.remove(filename);                         // Remove a previous version, otherwise data is appended the file again
-//     UploadFile = SD.open(filename, FILE_WRITE);  // Open the file for writing in SPIFFS (create it, if doesn't exist)
-//     filename = String();
-//   }
-//   else if (uploadfile.status == UPLOAD_FILE_WRITE)
-//   {
-//     if(UploadFile) UploadFile.write(uploadfile.buf, uploadfile.currentSize); // Write the received bytes to the file
-//   } 
-//   else if (uploadfile.status == UPLOAD_FILE_END)
-//   {
-//     if(UploadFile)          // If the file was successfully created
-//     {                                    
-//       UploadFile.close();   // Close the file again
-//       Serial.print("Upload Size: "); Serial.println(uploadfile.totalSize);
-//       webpage = "";
-//       append_page_header(webpage);
-//       webpage += F("<h3>File was successfully uploaded</h3>"); 
-//       webpage += F("<h2>Uploaded File Name: "); webpage += uploadfile.filename+"</h2>";
-//       webpage += F("<h2>File Size: "); webpage += file_size(uploadfile.totalSize) + "</h2><br>"; 
-//       append_page_footer(webpage);
-//       server.send(200,"text/html",webpage);
-//     } 
-//     else
-//     {
-//       ReportCouldNotCreateFile("upload");
-//     }
-//   }
-// }
+void File_Download(void){ // This gets called twice, the first pass selects the input, the second pass then processes the command line arguments
+  Serial << "hi" << endl;
+  Serial << server.args() << endl;
+  for (int i=0; i<server.args(); i++)
+    Serial << server.arg(i) << " | ";
+  Serial << endl;
+  if (server.args() > 0 ) { // Arguments were received
+    if (server.hasArg("download")) FS_file_download(server.arg(0));
+  }
+  else SelectInput("Enter filename to download","download","download");
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void FS_file_download(String filename){
+  //if (SD_present) { 
+  Serial << "opening " << filename << endl;
+  File download = SPIFFS.open("/"+filename, "r");
+  Serial << "file " << filename << "opened." << endl;
+  if (download) {
+    String contentType = getContentType(filename);
+    server.sendHeader("Content-Type", "text/text");
+    server.sendHeader("Content-Disposition", "attachment; filename="+filename);
+    server.sendHeader("Connection", "close");
+    size_t size = server.streamFile(download, contentType);
+    download.close();
+    Serial << "Close File." << endl;
+    Serial << "Streamed " << file_size(size) << endl;
+  } else ReportFileNotPresent("download"); 
+  //} else ReportSDNotPresent(server);
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void File_Upload(void){
+  append_page_header(webpage);
+  webpage += F("<h3>Select File to Upload</h3>"); 
+  webpage += F("<FORM action='/fupload' method='post' enctype='multipart/form-data'>");
+  webpage += F("<input class='buttons' style='width:40%' type='file' name='fupload' id = 'fupload' value=''><br>");
+  webpage += F("<br><button class='buttons' style='width:10%' type='submit'>Upload File</button><br>");
+  webpage += F("<a href='/'>[Back]</a><br><br>");
+  append_page_footer(webpage);
+  server.send(200, "text/html",webpage);
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+File UploadFile; 
+void handleFileUpload(void){ // upload a new file to the Filing system
+  HTTPUpload& uploadfile = server.upload(); // See https://github.com/esp8266/Arduino/tree/master/libraries/ESP8266WebServer/srcv
+                                            // For further information on 'status' structure, there are other reasons such as a failed transfer that could be used
+  if(uploadfile.status == UPLOAD_FILE_START)
+  {
+    String filename = uploadfile.filename;
+    if(!filename.startsWith("/")) filename = "/"+filename;
+    Serial.print("Upload File Name: "); Serial.println(filename);
+    SPIFFS.remove(filename);                         // Remove a previous version, otherwise data is appended the file again
+    UploadFile = SPIFFS.open(filename, "w");  // Open the file for writing in SPIFFS (create it, if doesn't exist)
+    filename = String();
+  }
+  else if (uploadfile.status == UPLOAD_FILE_WRITE)
+  {
+    if(UploadFile) UploadFile.write(uploadfile.buf, uploadfile.currentSize); // Write the received bytes to the file
+  } 
+  else if (uploadfile.status == UPLOAD_FILE_END)
+  {
+    if(UploadFile)          // If the file was successfully created
+    {                                    
+      UploadFile.close();   // Close the file again
+      Serial.print("Upload Size: "); Serial.println(uploadfile.totalSize);
+      webpage = "";
+      append_page_header(webpage);
+      webpage += F("<h3>File was successfully uploaded</h3>"); 
+      webpage += F("<h2>Uploaded File Name: "); webpage += uploadfile.filename+"</h2>";
+      webpage += F("<h2>File Size: "); webpage += file_size(uploadfile.totalSize) + "</h2><br>"; 
+      append_page_footer(webpage);
+      server.send(200,"text/html",webpage);
+    } 
+    else
+    {
+      ReportCouldNotCreateFile("upload");
+    }
+  }
+}
+
+void SendResponseOK(void){
+  Serial.println("OK!");
+  server.send(200);
+}
+
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void SendHTML_Header(){
   server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate"); 
@@ -175,4 +193,20 @@ String file_size(int bytes){
   else if(bytes < (1024*1024*1024)) fsize = String(bytes/1024.0/1024.0,3)+" MB";
   else                              fsize = String(bytes/1024.0/1024.0/1024.0,3)+" GB";
   return fsize;
+}
+
+String getContentType(String filename){
+  if(filename.endsWith(".htm")) return "text/html";
+  else if(filename.endsWith(".html")) return "text/html";
+  else if(filename.endsWith(".css")) return "text/css";
+  else if(filename.endsWith(".js")) return "application/javascript";
+  else if(filename.endsWith(".png")) return "image/png";
+  else if(filename.endsWith(".gif")) return "image/gif";
+  else if(filename.endsWith(".jpg")) return "image/jpeg";
+  else if(filename.endsWith(".ico")) return "image/x-icon";
+  else if(filename.endsWith(".xml")) return "text/xml";
+  else if(filename.endsWith(".pdf")) return "application/x-pdf";
+  else if(filename.endsWith(".zip")) return "application/x-zip";
+  else if(filename.endsWith(".gz")) return "application/x-gzip";
+  return "text/plain";
 }
