@@ -32,6 +32,81 @@
 String webpage = "";
 // All supporting functions from here...
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void handleFileCreate(void) {
+  if (server.args() == 0) {
+    return server.send(500, "text/plain", "BAD ARGS");
+  }
+  String path = server.arg(0);
+  Serial.println("handleFileCreate: " + path);
+  if (path == "/") {
+    return server.send(500, "text/plain", "BAD PATH");
+  }
+  if(!path.startsWith("/")) path = "/"+path;
+  if (SPIFFS.exists(path)) {
+    return server.send(500, "text/plain", "FILE EXISTS");
+  }
+  File file = SPIFFS.open(path, "w");
+  if (file) {
+    file.close();
+  } else {
+    return server.send(500, "text/plain", "CREATE FAILED");
+  }
+  server.send(200, "text/plain", "");
+  path = String();
+}
+
+void handleFileDelete(void) {
+  if (server.args() == 0) {
+    return server.send(500, "text/plain", "BAD ARGS");
+  }
+  String path = server.arg(0);
+  Serial.println("handleFileDelete: " + path);
+  if (path == "/") {
+    return server.send(500, "text/plain", "BAD PATH");
+  }
+  if(!path.startsWith("/")) path = "/"+path;
+  if (!SPIFFS.exists(path)) {
+    return server.send(404, "text/plain", "FileNotFound");
+  }
+  SPIFFS.remove(path);
+  server.send(200, "text/plain", "");
+  path = String();
+}
+
+void handleFileList(void) {
+  if (!server.hasArg("dir")) {
+    server.send(500, "text/plain", "BAD ARGS");
+    return;
+  }
+
+  String path = server.arg("dir");
+  Serial.println("handleFileList: " + path);
+  Dir dir = SPIFFS.openDir(path);
+  path = String();
+
+  String output = "[";
+  while (dir.next()) {
+    File entry = dir.openFile("r");
+    if (output != "[") {
+      output += ',';
+    }
+    bool isDir = false;
+    output += "{\"type\":\"";
+    output += (isDir) ? "dir" : "file";
+    output += "\",\"name\":\"";
+    if (entry.name()[0] == '/') {
+      output += &(entry.name()[1]);
+    } else {
+      output += entry.name();
+    }
+    output += "\"}";
+    entry.close();
+  }
+
+  output += "]";
+  server.send(200, "text/json", output);
+}
+
 void HomePage(void){
   SendHTML_Header();
   webpage += F("<a href='/download'><button>Download</button></a>");
@@ -42,7 +117,6 @@ void HomePage(void){
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void File_Download(void){ // This gets called twice, the first pass selects the input, the second pass then processes the command line arguments
-  Serial << "hi" << endl;
   Serial << server.args() << endl;
   for (int i=0; i<server.args(); i++)
     Serial << server.arg(i) << " | ";
@@ -51,6 +125,19 @@ void File_Download(void){ // This gets called twice, the first pass selects the 
     if (server.hasArg("download")) FS_file_download(server.arg(0));
   }
   else SelectInput("Enter filename to download","download","download");
+}
+//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+void File_List(String path){
+  Dir dir = SPIFFS.openDir(path);
+  webpage += "<div>";
+  while (dir.next()) {
+    webpage += "<p>";
+    webpage += dir.fileName();
+    webpage += "&#9;";
+    webpage += file_size(dir.fileSize());
+    webpage += "</p>";
+  }
+  webpage += "</div>";
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void FS_file_download(String filename){
@@ -89,9 +176,13 @@ void handleFileUpload(void){ // upload a new file to the Filing system
   if(uploadfile.status == UPLOAD_FILE_START)
   {
     String filename = uploadfile.filename;
+    if (filename == ""){
+      return server.send(500, "text/plain", "BAD NAME");
+    }
     if(!filename.startsWith("/")) filename = "/"+filename;
     Serial.print("Upload File Name: "); Serial.println(filename);
-    SPIFFS.remove(filename);                         // Remove a previous version, otherwise data is appended the file again
+    if (SPIFFS.exists(filename))
+      SPIFFS.remove(filename);               // Remove a previous version, otherwise data is appended the file again
     UploadFile = SPIFFS.open(filename, "w");  // Open the file for writing in SPIFFS (create it, if doesn't exist)
     filename = String();
   }
@@ -149,6 +240,7 @@ void SendHTML_Stop(){
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void SelectInput(String heading1, String command, String arg_calling_name){
   SendHTML_Header();
+  File_List("/");
   webpage += F("<h3>"); webpage += heading1 + "</h3>"; 
   webpage += F("<FORM action='/"); webpage += command + "' method='post'>"; // Must match the calling argument e.g. '/chart' calls '/chart' after selection but with arguments!
   webpage += F("<input type='text' name='"); webpage += arg_calling_name; webpage += F("' value=''><br>");

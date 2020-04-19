@@ -12,6 +12,9 @@ void FS_file_download(String filename);
 void File_Upload(void);
 void handleFileUpload(void);
 void SendResponseOK(void);
+void handleFileList(void);
+void handleFileDelete(void);
+void handleFileCreate(void);
 
 void SendHTML_Header();
 void SendHTML_Content();
@@ -22,5 +25,6 @@ void ReportFileNotPresent(String target);
 void ReportCouldNotCreateFile(String target);
 String file_size(int bytes);
 String getContentType(String filename);
+void File_List(String path);
 
 #endif
