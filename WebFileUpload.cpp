@@ -53,6 +53,7 @@ void handleFileCreate(void) {
   }
   server.send(200, "text/plain", "");
   path = String();
+  //delete &path;
 }
 
 void handleFileDelete(void) {
@@ -71,6 +72,7 @@ void handleFileDelete(void) {
   SPIFFS.remove(path);
   server.send(200, "text/plain", "");
   path = String();
+  //delete &path;
 }
 
 void handleFileList(void) {
@@ -82,7 +84,9 @@ void handleFileList(void) {
   String path = server.arg("dir");
   Serial.println("handleFileList: " + path);
   Dir dir = SPIFFS.openDir(path);
+  Serial << "Opened DIR" << endl;
   path = String();
+  Serial << "Construct String" << endl;
 
   String output = "[";
   while (dir.next()) {
@@ -102,9 +106,11 @@ void handleFileList(void) {
     output += "\"}";
     entry.close();
   }
-
   output += "]";
+  dir.closeDir();
   server.send(200, "text/json", output);
+  output = String();
+  //delete &output;
 }
 
 void HomePage(void){
@@ -138,6 +144,7 @@ void File_List(String path){
     webpage += "</p>";
   }
   webpage += "</div>";
+  dir.closeDir();
 }
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 void FS_file_download(String filename){
