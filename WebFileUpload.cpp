@@ -154,7 +154,7 @@ void FS_file_download(String filename){
   Serial << "file " << filename << "opened." << endl;
   if (download) {
     String contentType = getContentType(filename);
-    server.sendHeader("Content-Type", "text/text");
+    server.sendHeader("Content-Type", contentType);//"text/text");
     server.sendHeader("Content-Disposition", "attachment; filename="+filename);
     server.sendHeader("Connection", "close");
     size_t size = server.streamFile(download, contentType);
