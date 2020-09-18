@@ -220,7 +220,7 @@ void handleFileUpload(void){ // upload a new file to the Filing system
 
 void SendResponseOK(void){
   Serial.println("OK!");
-  server.send(200);
+  server.send(200, "text/plain", "OK");
 }
 
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
